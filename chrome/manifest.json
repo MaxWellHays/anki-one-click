@@ -1,0 +1,22 @@
+{
+    "name": "Anki One Click",
+    "version": "0.1",
+    "description": "Add unknown words and translation to anki in one click in browser",
+    "permissions": ["activeTab", "declarativeContent", "storage", "contextMenus"],
+    "options_page": "options.html",
+    "background": {
+      "scripts": ["background.js"],
+      "persistent": false
+    },
+    "page_action": {
+      "default_popup": "popup.html"
+    },
+    "content_scripts": [{
+        "matches": ["<all_urls>"],
+        "css": ["content.css"],
+        "js": ["content.js"],
+        "run_at": "document_end",
+        "all_frames": true
+    }],
+    "manifest_version": 2
+}

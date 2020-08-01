@@ -1,7 +1,7 @@
-chrome.runtime.onInstalled.addListener(function () {
-    chrome.storage.sync.set({ color: '#3aa757' }, function () {
-        console.log("The color is green.");
-    });
+const isThisBackground = true;
+console.log('isThisBackground', isThisBackground);
+
+chrome.runtime.onInstalled.addListener(function() {
     chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
         chrome.declarativeContent.onPageChanged.addRules([{
             conditions: [new chrome.declarativeContent.PageStateMatcher({
@@ -18,7 +18,7 @@ chrome.runtime.onInstalled.addListener(function () {
         });
 
         chrome.contextMenus.onClicked.addListener(function(info, tab) {
-            chrome.tabs.sendMessage(tab.id, { operation: "showBubble", text: info.selectedText });
+            chrome.tabs.sendMessage(tab.id, { operation: "showBubble", text: info.selectionText });
         });
     });
-});
+})

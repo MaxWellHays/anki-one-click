@@ -1,0 +1,54 @@
+{
+  "name": "anki-click-one-extension",
+  "version": "0.1.0",
+  "description": "Anki Click One Extension",
+  "homepage": "https://github.com/MaxWellHays/anki-one-click",
+  "scripts": {
+    "clean": "rm -rf dist && cpy manifest.json dist && cpy src/assets/* dist/assets",
+    "prebuild": "npm run clean",
+    "build:contentscript-background": "cross-env NODE_ENV=production webpack --config webpack.config.js",
+    "build:popup": "npm run build --prefix src/popup && cd src/popup/build && cpy *.* ../../../dist/popup --parents && cp -r ./static ../../../dist",
+    "build": "npm-run-all build:*",
+    "prewatch": "npm run clean",
+    "watch:contentscript-background": "cross-env NODE_ENV=development webpack --config webpack.config.js -w",
+    "watch:popup": "npm run watch:build --prefix src/popup",
+    "watch": "npm-run-all --parallel watch:*",
+    "zip": "bestzip extension.zip dist/*"
+  },
+  "bugs": {
+    "url": "https://github.com/MaxWellHays/anki-one-click/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MaxWellHays/anki-one-click"
+  },
+  "keywords": [
+    "anki",
+    "translation",
+    "add words",
+    "chrome",
+    "extension",
+    "typescript",
+    "react"
+  ],
+  "author": "Maksim Mukhamatulin",
+  "devDependencies": {
+    "@types/chrome": "0.0.115",
+    "@types/node": "14.0.13",
+    "awesome-typescript-loader": "^5.2.1",
+    "bestzip": "2.1.5",
+    "cpy-cli": "2.0.0",
+    "cra-build-watch": "3.0.0",
+    "cross-env": "^7.0.2",
+    "css-loader": "3.2.1",
+    "mini-css-extract-plugin": "^0.8.0",
+    "node-sass": "^4.14.1",
+    "npm-run-all": "^4.1.5",
+    "sass-loader": "8.0.0",
+    "ts-node": "8.5.4",
+    "tslint": "5.20.1",
+    "typescript": "^3.9.5",
+    "webpack": "^4.42.0",
+    "webpack-cli": "3.3.10"
+  }
+}

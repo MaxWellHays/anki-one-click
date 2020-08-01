@@ -1,0 +1,27 @@
+{
+  "manifest_version": 2,
+  "name": "Anki One Click",
+  "short_name": "Anki One Click Chrome Extension",
+  "version": "0.1.0",
+  "description": "Add unknown words and translations to anki in one click in browser",
+  "permissions": ["tabs", "activeTab", "storage", "declarativeContent", "contextMenus"],
+  "browser_action": {
+    "default_popup": "popup/index.html",
+    "default_title": "Anki One Click"
+  },
+  "icons": {
+    "128": "./assets/icon.png"
+  },
+  "content_scripts": [
+    {
+      "js": ["contentscript.js"],
+      "css": ["contentscript.css"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "content_security_policy": "script-src 'self' 'unsafe-eval' 'sha256-V/iEy/JDsKiWnn/Sob0oSf4ctpuI27zHmLnLyOfgQ58='; object-src 'self'"
+}

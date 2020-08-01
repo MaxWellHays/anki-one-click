@@ -1,27 +1,23 @@
-// Add bubble to the top of the page.
+import './contentscript.scss';
+
 var bubbleDOM = document.createElement('div');
 bubbleDOM.setAttribute('class', 'selection_bubble');
 document.body.appendChild(bubbleDOM);
 
-function showBubble() {
+function renderBubble(mouseX: number, mouseY: number, selection: string): void {
+    bubbleDOM.innerHTML = selection;
+    bubbleDOM.style.top = mouseY.toString() + 'px';
+    bubbleDOM.style.left = mouseX.toString() + 'px';
+    bubbleDOM.style.visibility = 'visible';
+}
+
+function showBubble(): void {
     var s = window.getSelection();
     var rect = s.getRangeAt(0).getBoundingClientRect();
     var selection = s.toString();
     if (selection.length > 0) {
         renderBubble(rect.right, rect.top, selection);
     }
-}
-
-function hideBubble() {
-    bubbleDOM.style.visibility = 'hidden';
-}
-
-// Move that bubble to the appropriate location.
-function renderBubble(mouseX, mouseY, selection) {
-    bubbleDOM.innerHTML = selection;
-    bubbleDOM.style.top = mouseY + 'px';
-    bubbleDOM.style.left = mouseX + 'px';
-    bubbleDOM.style.visibility = 'visible';
 }
 
 chrome.runtime.onMessage.addListener(

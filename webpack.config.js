@@ -15,7 +15,7 @@ module.exports = {
   mode: process.env.NODE_ENV,
   devtool: 'inline-source-map',
   entry: {
-    contentscript: join(__dirname, 'src/contentscript/contentscript.ts'),
+    contentscript: join(__dirname, 'src/contentscript/contentscript.tsx'),
     background: join(__dirname, 'src/background/background.ts'),
   },
   output: {
@@ -26,7 +26,7 @@ module.exports = {
     rules: [
       {
         exclude: /node_modules/,
-        test: /\.ts?$/,
+        test: /\.ts(x?)$/,
         use: 'awesome-typescript-loader?{configFileName: "tsconfig.json"}',
       },
       {
@@ -44,6 +44,6 @@ module.exports = {
     }),
   ],
   resolve: {
-    extensions: ['.ts', '.js'],
+    extensions: ['.ts', '.tsx', '.js'],
   },
 };

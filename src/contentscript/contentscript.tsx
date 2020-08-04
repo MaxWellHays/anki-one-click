@@ -2,65 +2,97 @@ import './contentscript.scss';
 import * as React from "react";
 import ReactDOM = require('react-dom');
 
-var container = document.createElement('div');
-container.setAttribute('id', 'anki-one-click-bubble-host');
-document.documentElement.appendChild(container);
-
 export interface SelectionInfo {
     text: string;
     rect: DOMRect;
 }
 
 export interface BubbleViewModel {
+}
+
+export interface BubbleState {
+    visible: boolean;
     currentSelection?: SelectionInfo;
 }
 
-export class BubblePopup extends React.Component<BubbleViewModel> {
+export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
+    wrapperRef: React.RefObject<unknown>;
+
+    constructor(props : BubbleViewModel) {
+        super(props);
+        this.handleClickOutside = this.handleClickOutside.bind(this);
+        this.handleChromeRuntimeMessage = this.handleChromeRuntimeMessage.bind(this);
+        this.state = {
+            visible: false,
+            currentSelection: null,
+        }
+    }
+
     render() {
-        if (this.props.currentSelection) {
+        if (this.state.visible && this.state.currentSelection) {
             return (<div className="selection_bubble"
-                style={this.createBubbleProperties(this.props.currentSelection.rect)}>
-                {this.props.currentSelection.text}
+                style={this.createBubbleProperties(this.state.currentSelection.rect)}>
+                {this.state.currentSelection.text}
             </div>);
         }
         return null;
     }
 
+    componentDidMount() {
+        document.addEventListener('mousedown', this.handleClickOutside);
+        chrome.runtime.onMessage.addListener(this.handleChromeRuntimeMessage);
+    }
+
+    componentWillUnmount() {
+        document.removeEventListener('mousedown', this.handleClickOutside);
+        chrome.runtime.onMessage.removeListener(this.handleChromeRuntimeMessage);
+    }
+
+    handleClickOutside(event: MouseEvent) : void {
+        const domNode = ReactDOM.findDOMNode(this);
+        const target = event.target as Node;
+
+        if (!domNode || !domNode.contains(target)) {
+            this.setState({
+                visible: false
+            });
+        }
+    }
+
+    handleChromeRuntimeMessage(request: any) {
+        if (request.operation == "showBubble") {
+            const selection = window.getSelection();
+            const selectionText = selection.toString();
+            if (selectionText.length > 0) {
+                const rect = selection.getRangeAt(0).getBoundingClientRect();
+                const selectionInfo: SelectionInfo = {
+                    rect: this.offset(rect, window.pageXOffset, window.pageYOffset),
+                    text: selection.toString(),
+                }
+                this.setState({
+                    visible: true,
+                    currentSelection: selectionInfo,
+                });
+            }
+        }
+    }
+
     createBubbleProperties(selectionRect: DOMRect): React.CSSProperties {
         return {
             top: selectionRect.top,
-            left: selectionRect.right,
-            visibility: "visible",
+            left: selectionRect.right
         };
     }
+
+    offset(rect : DOMRect, xOffset : number, yOffset : number) : DOMRect {
+        return new DOMRect(rect.x + xOffset, rect.y + yOffset, rect.width, rect.height);
+    }
 }
+
+
+var container = document.createElement('div');
+container.setAttribute('id', 'anki-one-click-bubble-host');
+document.documentElement.appendChild(container);
 
 const bubble = <BubblePopup />;
 ReactDOM.render(bubble, container);
-
-function showBubble(): void {
-    var selection = window.getSelection();
-    var rect = selection.getRangeAt(0).getBoundingClientRect();
-    const selectionInfo: SelectionInfo = {
-        rect: offset(rect, window.pageXOffset, window.pageYOffset),
-        text: selection.toString(),
-    }
-    if (selectionInfo.text.length > 0) {
-        const bubble = <BubblePopup currentSelection={selectionInfo} />;
-        ReactDOM.render(bubble, container)
-    }
-}
-
-function offset(rect : DOMRect, xOffset : number, yOffset : number) : DOMRect {
-    return new DOMRect(rect.x + xOffset, rect.y + yOffset, rect.width, rect.height);
-}
-
-chrome.runtime.onMessage.addListener(
-    function (request, sender, sendResponse) {
-        console.log(sender.tab ?
-            "from a content script:" + sender.tab.url :
-            "from the extension");
-        if (request.operation == "showBubble") {
-            showBubble();
-        }
-    });

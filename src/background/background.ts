@@ -1,7 +1,6 @@
-const isThisBackground = true;
-console.log('isThisBackground', isThisBackground);
+chrome.runtime.onInstalled.addListener(extensionInstalled);
 
-chrome.runtime.onInstalled.addListener(function() {
+function extensionInstalled(details: chrome.runtime.InstalledDetails) : void {
     chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
         chrome.declarativeContent.onPageChanged.addRules([{
             conditions: [new chrome.declarativeContent.PageStateMatcher({
@@ -10,15 +9,18 @@ chrome.runtime.onInstalled.addListener(function() {
             ],
             actions: [new chrome.declarativeContent.ShowPageAction()]
         }]);
-
-        chrome.contextMenus.create({
-            id: "translate",
-            title: "Translate",
-            contexts: ["selection"]
-        });
-
-        chrome.contextMenus.onClicked.addListener(function(info, tab) {
-            chrome.tabs.sendMessage(tab.id, { operation: "showBubble", text: info.selectionText });
-        });
     });
-})
+
+    chrome.contextMenus.create({
+        id: "translate",
+        title: "Translate",
+        contexts: ["selection"]
+    });
+
+    chrome.contextMenus.onClicked.addListener(function(info, tab) {
+        if (info.menuItemId == "translate") {
+            chrome.tabs.sendMessage(tab.id, { operation: "showBubble", text: info.selectionText });
+            console.log("show bubble sent");
+        }
+    });
+}

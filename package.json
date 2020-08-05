@@ -32,15 +32,20 @@
   "author": "Maksim Mukhamatulin",
   "devDependencies": {
     "@types/chrome": "0.0.115",
+    "@types/mini-css-extract-plugin": "^0.9.1",
     "@types/node": "14.0.13",
     "@types/react": "^16.9.44",
     "@types/react-dom": "^16.9.8",
+    "@types/request": "^2.48.5",
+    "@types/request-promise-native": "^1.0.17",
+    "@types/webpack": "^4.41.21",
     "awesome-typescript-loader": "^5.2.1",
     "bestzip": "2.1.5",
     "cpy-cli": "2.0.0",
     "cra-build-watch": "3.0.0",
     "cross-env": "^7.0.2",
     "css-loader": "3.2.1",
+    "file-loader": "^6.0.0",
     "mini-css-extract-plugin": "^0.8.0",
     "node-sass": "^4.14.1",
     "npm-run-all": "^4.1.5",
@@ -53,6 +58,8 @@
   },
   "dependencies": {
     "react": "^16.13.1",
-    "react-dom": "^16.13.1"
+    "react-dom": "^16.13.1",
+    "request": "^2.88.2",
+    "request-promise-native": "^1.0.9"
   }
 }

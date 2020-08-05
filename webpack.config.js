@@ -2,6 +2,7 @@ const { CheckerPlugin } = require('awesome-typescript-loader');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { optimize } = require('webpack');
 const { join } = require('path');
+const { FileLoaderPlugin } = require('file-loader');
 let prodPlugins = [];
 
 if (process.env.NODE_ENV === 'production') {
@@ -17,6 +18,7 @@ module.exports = {
   entry: {
     contentscript: join(__dirname, 'src/contentscript/contentscript.tsx'),
     background: join(__dirname, 'src/background/background.ts'),
+    options: join(__dirname, 'src/options/options.tsx'),
   },
   output: {
     path: join(__dirname, 'dist'),
@@ -33,6 +35,10 @@ module.exports = {
         test: /\.scss$/,
         use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader'],
       },
+      {
+        test: /\.html/,
+        loader: 'file-loader?name=[name].[ext]',
+      },
     ],
   },
   plugins: [
@@ -41,7 +47,7 @@ module.exports = {
     new MiniCssExtractPlugin({
       filename: '[name].css',
       chunkFilename: '[id].css',
-    }),
+    })
   ],
   resolve: {
     extensions: ['.ts', '.tsx', '.js'],

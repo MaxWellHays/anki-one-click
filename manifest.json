@@ -5,6 +5,11 @@
   "version": "0.1.0",
   "description": "Add unknown words and translations to anki in one click in browser",
   "permissions": ["tabs", "activeTab", "storage", "declarativeContent", "contextMenus"],
+  "options_page": "options.html",
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "icons": {
     "128": "./assets/icon.png"
   },

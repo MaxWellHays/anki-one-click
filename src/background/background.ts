@@ -25,15 +25,14 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
     }
 });
 
-chrome.runtime.onMessage.addListener(message => {
+chrome.runtime.onMessage.addListener((message, sender) => {
     if (message.sourceTextToTranslate) {
         chrome.storage.sync.get("yandexTranslateApiKey", items => {
-            var url = new URL('https://translate.yandex.net/api/v1.5/tr.json/translate');
+            var url = new URL('https://dictionary.yandex.net/api/v1/dicservice.json/lookup');
             const yandexTranslateApiKey = items["yandexTranslateApiKey"];
             url.searchParams.set('key', yandexTranslateApiKey);
             url.searchParams.set('lang', 'en-ru');
-            url.searchParams.set('format', 'plain');
-            url.searchParams.set('text', this.props.sourceText);
+            url.searchParams.set('text', message.sourceTextToTranslate);
             var requestOptions = {
                 method: 'GET',
                 redirect: 'follow'
@@ -42,9 +41,11 @@ chrome.runtime.onMessage.addListener(message => {
             fetch(url.href, requestOptions)
                 .then(response => response.json())
                 .then(response => {
-                    this.setState({
-                        translation: response.text
-                    });
+                    var tabId : number = sender.tab.id;
+                    chrome.tabs.sendMessage(tabId, {
+                        translation: response,
+                        sourceTextToTranslate: message.sourceTextToTranslate
+                    })
                 });
         });
     }

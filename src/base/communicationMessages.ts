@@ -17,7 +17,17 @@ export interface SaveExtensionOptionsResponse {
 }
 
 export interface TranslateRequest {
+    sourceTextToTranslate: string;
+}
 
+export interface WordTranslation {
+    isInDictionary: boolean;
+    translation: string;
+}
+
+export interface TranslateResponse {
+    sourceTextToTranslate: string;
+    translations: WordTranslation[];
 }
 
 export interface ShowBubbleRequest {

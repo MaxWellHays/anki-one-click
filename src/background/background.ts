@@ -1,5 +1,6 @@
-import { GetExtensionOptionsResponse, SaveExtensionOptionsResponse } from '../base/communicationMessages';
+import { GetExtensionOptionsResponse, SaveExtensionOptionsResponse, TranslateResponse, WordTranslation } from '../base/communicationMessages';
 import { AnkiConnectApi, DeckId } from '../base/ankiConnectApi';
+import { YandexDictionaryClient, YandexTranslateResponse } from './yandexDictionaryClient';
 
 chrome.runtime.onInstalled.addListener(extensionInstalled);
 
@@ -34,6 +35,10 @@ function getSettingsFromStorage() : Promise<{ [key: string]: any }> {
     })
 }
 
+function getYandexDictionaryApiKey() : Promise<string> {
+    return getSettingsFromStorage().then(settings => settings["yandexDictionaryApiKey"]);
+}
+
 function setSettingsInStorage(settings: any) : Promise<void> {
     return new Promise(resolve => {
         chrome.storage.sync.set(settings, () => {
@@ -42,31 +47,42 @@ function setSettingsInStorage(settings: any) : Promise<void> {
     })
 }
 
+function getWordTranslationsList(yandexResponse: YandexTranslateResponse) : WordTranslation[] {
+    const definitions = yandexResponse.def;
+    const translations : WordTranslation[] = [];
+
+    let hasNewDefs = true;
+    let i = 0;
+    while (hasNewDefs) {
+        hasNewDefs = false;
+        for (let definition of definitions) {
+            if (i < definition.tr.length) {
+                hasNewDefs = true;
+                translations.push({
+                    isInDictionary: false,
+                    translation: definition.tr[i].text
+                })
+            }
+        }
+        i++;
+    }
+    return translations;
+}
+
 var ankiConnection = new AnkiConnectApi();
+var yandexDictionaryApi = new YandexDictionaryClient();
 
-chrome.runtime.onMessage.addListener((message, sender, responseCallback) => {
+chrome.runtime.onMessage.addListener((message, sender) => {
     if (message.sourceTextToTranslate) {
-        chrome.storage.sync.get("yandexDictionaryApiKey", items => {
-            var url = new URL('https://dictionary.yandex.net/api/v1/dicservice.json/lookup');
-            const yandexDictionaryApiKey = items["yandexDictionaryApiKey"];
-            url.searchParams.set('key', yandexDictionaryApiKey);
-            url.searchParams.set('lang', 'en-ru');
-            url.searchParams.set('text', message.sourceTextToTranslate);
-            var requestOptions = {
-                method: 'GET',
-                redirect: 'follow'
-            } as RequestInit;
-
-            fetch(url.href, requestOptions)
-                .then(response => response.json())
-                .then(response => {
-                    var tabId : number = sender.tab.id;
-                    chrome.tabs.sendMessage(tabId, {
-                        translation: response,
-                        sourceTextToTranslate: message.sourceTextToTranslate
-                    })
-                });
-        });
+        var apiKeyPromise = getYandexDictionaryApiKey();
+        var translationsPromise = apiKeyPromise.then(apiKey => yandexDictionaryApi.translate(apiKey, message.sourceTextToTranslate));
+        translationsPromise.then(translations => {
+            const response : TranslateResponse = {
+                sourceTextToTranslate: message.sourceTextToTranslate,
+                translations: getWordTranslationsList(translations)
+            }
+            chrome.tabs.sendMessage(sender.tab.id, response);
+        })
     }
     if (message.optionsRequest) {
         var settingsPromise = getSettingsFromStorage();

@@ -2,20 +2,24 @@ import React = require("react");
 import ReactDOM = require('react-dom');
 import { TranslateRequest, WordTranslation, TranslateResponse } from "../base/communicationMessages";
 
-export interface TranslationSourceInfo {
+export interface TranslationMenuSourceInfo {
     sourceText: string;
 }
 
-export interface TranslationState {
+export interface TranslationMenuState {
     translations?: WordTranslation[];
+    wordsInProcess: Set<WordTranslation>;
 }
 
-export class TranslationMenu extends React.Component<TranslationSourceInfo, TranslationState> {
-    constructor(props: TranslationSourceInfo) {
+export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, TranslationMenuState> {
+
+    constructor(props: TranslationMenuSourceInfo) {
         super(props);
         this.handleChromeRuntimeMessage = this.handleChromeRuntimeMessage.bind(this);
+        this.handleAddOrRemoveTranslation = this.handleAddOrRemoveTranslation.bind(this);
         this.state = {
-            translations: null
+            translations: null,
+            wordsInProcess: new Set<WordTranslation>(),
         }
     }
 
@@ -34,8 +38,21 @@ export class TranslationMenu extends React.Component<TranslationSourceInfo, Tran
     render() {
         let translations;
         if (this.state.translations) {
-            const translationsList = this.state.translations.map(tr =>
-                <WordTranslationComponent key={tr.translation} isInDictionary={tr.isInDictionary} translation={tr.translation} />);
+            const translationsList = this.state.translations
+                .map(tr => {
+                    if (this.state.wordsInProcess.has(tr)) {
+                        return (<div className="anki-one-click-translation-choice">
+                            <div className="anki-one-click-spinner" />
+                            {tr.translation}
+                        </div>);
+                    }
+                    else {
+                        return (<WordTranslationComponent key={tr.translation}
+                                    translation={tr}
+                                    onTranslationStateChanged={this.handleAddOrRemoveTranslation} />);
+                    }
+                });
+
             translations = (<div>
                 {translationsList}
             </div>);
@@ -58,25 +75,38 @@ export class TranslationMenu extends React.Component<TranslationSourceInfo, Tran
             this.setState({translations: translationReponse.translations})
         }
     }
+
+    handleAddOrRemoveTranslation(translation: WordTranslation, added: boolean) : void {
+        this.setState(oldState => {
+            const newSet = new Set<WordTranslation>(oldState.wordsInProcess);
+            newSet.add(translation);
+
+            return {
+                wordsInProcess: newSet
+            }
+        });
+    }
 }
 
-export class WordTranslationComponent extends React.Component<WordTranslation> {
-    constructor(props: WordTranslation) {
+export interface WordTranslationInfo {
+    translation: WordTranslation;
+    onTranslationStateChanged: ((translation: WordTranslation, added: boolean) => void)
+}
+
+export class WordTranslationComponent extends React.Component<WordTranslationInfo> {
+    constructor(props: WordTranslationInfo) {
         super(props);
-        this.getStatusSymbol = this.getStatusSymbol.bind(this);
+        this.handleInputClicked = this.handleInputClicked.bind(this);
     }
 
     render() {
-        return (<div>
-            {this.getStatusSymbol()}
-            {this.props.translation}
-        </div>);
+        return (<label className="anki-one-click-translation-choice">
+            <input type="checkbox" checked={this.props.translation.isInDictionary} onClick={this.handleInputClicked} />
+            {this.props.translation.translation}
+        </label>);
     }
 
-    getStatusSymbol() : string {
-        if (this.props.isInDictionary) {
-            return "☑️"
-        }
-        return "⬜";
+    handleInputClicked(event: React.MouseEvent<HTMLInputElement, MouseEvent>) : void {
+        this.props.onTranslationStateChanged(this.props.translation, !this.props.translation.isInDictionary);
     }
 }

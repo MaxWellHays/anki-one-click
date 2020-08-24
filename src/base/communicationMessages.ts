@@ -25,6 +25,11 @@ export interface WordTranslation {
     translation: string;
 }
 
+export interface ChangeWordTranslationStateRequest {
+    sourceTextToTranslate: string;
+    newTranslations: string[];
+}
+
 export interface TranslateResponse {
     sourceTextToTranslate: string;
     translations: WordTranslation[];

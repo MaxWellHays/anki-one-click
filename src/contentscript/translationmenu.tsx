@@ -1,6 +1,6 @@
 import React = require("react");
 import ReactDOM = require('react-dom');
-import { TranslateRequest, WordTranslation, TranslateResponse } from "../base/communicationMessages";
+import { TranslateRequest, WordTranslation, TranslateResponse, ChangeWordTranslationStateRequest } from "../base/communicationMessages";
 
 export interface TranslationMenuSourceInfo {
     sourceText: string;
@@ -39,20 +39,10 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
         let translations;
         if (this.state.translations) {
             const translationsList = this.state.translations
-                .map(tr => {
-                    if (this.state.wordsInProcess.has(tr)) {
-                        return (<div className="anki-one-click-translation-choice">
-                            <div className="anki-one-click-spinner" />
-                            {tr.translation}
-                        </div>);
-                    }
-                    else {
-                        return (<WordTranslationComponent key={tr.translation}
-                                    translation={tr}
-                                    onTranslationStateChanged={this.handleAddOrRemoveTranslation} />);
-                    }
-                });
-
+                .map(tr => (<WordTranslationComponent key={tr.translation}
+                                isInProgress={this.state.wordsInProcess.has(tr)}
+                                translation={tr}
+                                onTranslationStateChanged={this.handleAddOrRemoveTranslation} />));
             translations = (<div>
                 {translationsList}
             </div>);
@@ -72,7 +62,10 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
     handleChromeRuntimeMessage(request: any) {
         if (request.translations && request.sourceTextToTranslate == this.props.sourceText) {
             const translationReponse = request as TranslateResponse;
-            this.setState({translations: translationReponse.translations})
+            this.setState({
+                translations: translationReponse.translations,
+                wordsInProcess: new Set<WordTranslation>()
+            })
         }
     }
 
@@ -80,6 +73,12 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
         this.setState(oldState => {
             const newSet = new Set<WordTranslation>(oldState.wordsInProcess);
             newSet.add(translation);
+            translation.isInDictionary = !translation.isInDictionary;
+            const changeTranslations : ChangeWordTranslationStateRequest = {
+                newTranslations: this.state.translations.filter(tr => tr.isInDictionary).map(tr => tr.translation),
+                sourceTextToTranslate: this.props.sourceText
+            }
+            chrome.runtime.sendMessage(changeTranslations);
 
             return {
                 wordsInProcess: newSet
@@ -90,6 +89,7 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
 
 export interface WordTranslationInfo {
     translation: WordTranslation;
+    isInProgress: boolean;
     onTranslationStateChanged: ((translation: WordTranslation, added: boolean) => void)
 }
 
@@ -101,7 +101,13 @@ export class WordTranslationComponent extends React.Component<WordTranslationInf
 
     render() {
         return (<label className="anki-one-click-translation-choice">
-            <input type="checkbox" checked={this.props.translation.isInDictionary} onClick={this.handleInputClicked} />
+            <div className="anki-one-click-checkbox-container">
+                <input type="checkbox"
+                    checked={this.props.translation.isInDictionary}
+                    disabled={this.props.isInProgress}
+                    onClick={this.handleInputClicked} />
+            </div>
+
             {this.props.translation.translation}
         </label>);
     }

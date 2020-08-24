@@ -1,4 +1,4 @@
-import { GetExtensionOptionsResponse, SaveExtensionOptionsResponse, TranslateResponse, WordTranslation } from '../base/communicationMessages';
+import { GetExtensionOptionsResponse, SaveExtensionOptionsResponse, TranslateResponse, WordTranslation, ChangeWordTranslationStateRequest } from '../base/communicationMessages';
 import { AnkiConnectApi, DeckId } from '../base/ankiConnectApi';
 import { YandexDictionaryClient, YandexTranslateResponse } from './yandexDictionaryClient';
 
@@ -73,48 +73,62 @@ function getWordTranslationsList(yandexResponse: YandexTranslateResponse) : Word
     return translations;
 }
 
-var ankiConnection = new AnkiConnectApi();
-var yandexDictionaryApi = new YandexDictionaryClient();
+const ankiConnection = new AnkiConnectApi();
+const yandexDictionaryApi = new YandexDictionaryClient();
+
+async function getYandexTranslations(word: string) : Promise<WordTranslation[]> {
+    const apiKey = await getYandexDictionaryApiKey();
+    const translations = await yandexDictionaryApi.translate(apiKey, word);
+    return getWordTranslationsList(translations);
+}
+
+async function getExistingTranslations(word: string) : Promise<string[]> {
+    const currentDeck = await getSelectedDeckName();
+    const existingTranslations = await ankiConnection.getExistingTranslationOfWord(currentDeck, word);
+    return existingTranslations;
+}
+
+function generateTranslateResponse(sourceText : string,outsideTranslations : WordTranslation[], existingTranslations: string[]) : TranslateResponse {
+    for (let existingTranslation of existingTranslations) {
+        const index = outsideTranslations.findIndex(tr => tr.translation == existingTranslation);
+        if (index >= 0) {
+            outsideTranslations[index].isInDictionary = true;
+        }
+        else {
+            outsideTranslations.push({
+                isInDictionary: true,
+                translation: existingTranslation,
+            });
+        }
+    }
+
+    const response : TranslateResponse = {
+        sourceTextToTranslate: sourceText,
+        translations: outsideTranslations,
+    }
+
+    return response;
+}
 
 chrome.runtime.onMessage.addListener((message, sender) => {
     if (message.sourceTextToTranslate) {
-        var sourceToTranslate = message.sourceTextToTranslate;
-        var apiKeyPromise = getYandexDictionaryApiKey();
-        var translationsPromise = apiKeyPromise.then(apiKey => yandexDictionaryApi.translate(apiKey, sourceToTranslate));
-        var currentDeckPromise = getSelectedDeckName();
-        var existingTranslationsPromise = currentDeckPromise.then(deckName => ankiConnection.getExistingTranslationOfWord(deckName, sourceToTranslate))
-        Promise.all([translationsPromise, existingTranslationsPromise]).then(vals => {
-            const outsideTranslations = getWordTranslationsList(vals[0]);
+        const sourceText = message.sourceTextToTranslate;
+        Promise.all([getYandexTranslations(sourceText), getExistingTranslations(sourceText)]).then(vals => {
+            const outsideTranslations = vals[0];
             const existingTranslations = vals[1];
 
-            for (let existingTranslation of existingTranslations) {
-                const index = outsideTranslations.findIndex(tr => tr.translation == existingTranslation);
-                if (index >= 0) {
-                    outsideTranslations[index].isInDictionary = true;
-                }
-                else {
-                    outsideTranslations.push({
-                        isInDictionary: true,
-                        translation: existingTranslation,
-                    });
-                }
-            }
-
-            const response : TranslateResponse = {
-                sourceTextToTranslate: sourceToTranslate,
-                translations: outsideTranslations,
-            }
+            const response = generateTranslateResponse(sourceText, outsideTranslations, existingTranslations);
             chrome.tabs.sendMessage(sender.tab.id, response);
         });
     }
     if (message.optionsRequest) {
-        var settingsPromise = getSettingsFromStorage();
-        var availableDecksPromise = ankiConnection.getAvailableDecks();
+        const settingsPromise = getSettingsFromStorage();
+        const availableDecksPromise = ankiConnection.getAvailableDecks();
         Promise.all([settingsPromise, availableDecksPromise]).then(values => {
             const settings = values[0] as { [key: string]: any };
             const decks = values[1] as DeckId[];
 
-            var response : GetExtensionOptionsResponse = {
+            const response : GetExtensionOptionsResponse = {
                 extensionOptions : {
                     availableDecks: decks,
                     yandexDictionaryApiKey: settings["yandexDictionaryApiKey"],
@@ -131,5 +145,17 @@ chrome.runtime.onMessage.addListener((message, sender) => {
             }
             chrome.runtime.sendMessage(response);
         });
+    }
+    if (message.newTranslations) {
+        const request = message as ChangeWordTranslationStateRequest;
+        const currentDeckPromise = getSelectedDeckName();
+        const updateTranslations = currentDeckPromise
+            .then(deckName => ankiConnection.setTranslationsOfWord(deckName, request.sourceTextToTranslate, request.newTranslations));
+
+        Promise.all([updateTranslations, getYandexTranslations(request.sourceTextToTranslate)])
+            .then(vals => {
+                const response = generateTranslateResponse(request.sourceTextToTranslate, vals[1], vals[0]);
+                chrome.tabs.sendMessage(sender.tab.id, response)
+            });
     }
 });

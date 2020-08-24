@@ -4,8 +4,9 @@ import * as React from "react";
 import ReactDOM = require('react-dom');
 import Select, { ValueType, ActionMeta } from 'react-select';
 import { DeckId } from '../base/ankiConnectApi';
-import { ExtensionOptions } from '../base/extensionOptions';
+import { ExtensionOptions, TriggerKey } from '../base/extensionOptions';
 import { GetExtensionOptionsRequest, GetExtensionOptionsResponse, SaveExtensionOptionsRequest } from '../base/communicationMessages';
+import { throws } from 'assert';
 
 enum OptionStatus {
     Loading,
@@ -14,9 +15,8 @@ enum OptionStatus {
     Saved
 }
 
-export interface OptionsComponentState {
+export interface OptionsComponentState extends ExtensionOptions {
     status: OptionStatus;
-    settings?: ExtensionOptions;
 }
 
 export class OptionType {
@@ -28,39 +28,96 @@ export class OptionsComponent extends React.Component<any, OptionsComponentState
     constructor(props: any) {
         super(props);
 
-        this.handleApiKeyChange = this.handleApiKeyChange.bind(this);
-        this.handleTargetDeckChange = this.handleTargetDeckChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
         this.handleRuntimeMessage = this.handleRuntimeMessage.bind(this);
 
         this.state = {
             status: OptionStatus.Loading,
-            settings: null
+            availableDecks: [],
+            popupOnDoubleClick: false,
+            popupOnSelect: false,
+            targetDeck: { id: 0, name: "" },
+            yandexDictionaryApiKey: "",
+            popupOnDoubleClickTriggerKey: TriggerKey.None,
+            popupOnSelectTriggerKey: TriggerKey.None,
         };
     }
 
     render() {
         const isDisabled = this.state.status == OptionStatus.Loading || this.state.status == OptionStatus.Saving;
-        const options = this.state.settings?.availableDecks.map(d => this.convertToSelectOption(d)) ?? [];
-        const selectedOption = options.find(option => option.value.id == this.state.settings?.targetDeck.id);
+        const options = this.state.availableDecks.map(d => this.convertToSelectOption(d)) ?? [];
+        const selectedOption = options.find(option => option.value.id == this.state?.targetDeck.id);
 
         return (
             <form onSubmit={this.handleSubmit}>
-                <label>
-                    Yandex Dictionary API Key:
-                    <input type="text" disabled={isDisabled} value={this.state.settings?.yandexDictionaryApiKey} onChange={this.handleApiKeyChange} />
-                </label>
-                <label>
-                    Target Anki Deck:
-                    <Select
-                        isDisabled={isDisabled}
-                        value={selectedOption}
-                        options={options}
-                        onChange={this.handleTargetDeckChange}
-                    />
-                </label>
-                <input type="submit" value="Save" />
-                <div className="saved-status" hidden={this.state.status != OptionStatus.Saved}>✔ Options saved</div>
+                <div className="option-row">
+                    <div className="option-name">Yandex Dictionary API Key:</div>
+                    <div className="option-value">
+                        <input type="text"
+                            disabled={isDisabled}
+                            value={this.state.yandexDictionaryApiKey}
+                            onChange={input => this.setState({ yandexDictionaryApiKey: input.target.value })} />
+                    </div>
+                </div>
+                <div className="option-row">
+                    <div className="option-name">Target Anki Deck:</div>
+                    <div className="option-value">
+                        <Select
+                            isDisabled={isDisabled}
+                            value={selectedOption}
+                            onChange={(val: OptionType) => this.setState({ targetDeck: val.value })}
+                            options={options} />
+                    </div>
+                </div>
+                <div className="option-row">
+                    <div className="option-name">Pop-up definitions:</div>
+                    <div className="option-value">
+                        <div className="option-value-primary">
+                            <label>
+                                <input type="checkbox"
+                                    disabled={isDisabled}
+                                    checked={this.state.popupOnDoubleClick}
+                                    onChange={val => this.setState({ popupOnDoubleClick: val.target.checked })} />
+                                    Display pop-up when I double-click a word
+                            </label>
+                        </div>
+                        <div className="option-value-secondary">
+                            <span>Trigger key:</span>
+                            <select disabled={isDisabled || !this.state.popupOnDoubleClick}
+                                value={this.state.popupOnDoubleClickTriggerKey}
+                                onChange={val => this.setState({ popupOnDoubleClickTriggerKey: parseInt(val.target.value) })}>
+                                <option value={TriggerKey.None}>None</option>
+                                <option value={TriggerKey.Ctrl}>Ctrl</option>
+                                <option value={TriggerKey.Alt}>Alt</option>
+                                <option value={TriggerKey.Shilf}>Shift</option>
+                            </select>
+                        </div>
+                        <div className="option-value-primary">
+                            <label >
+                                <input type="checkbox"
+                                    disabled={isDisabled}
+                                    checked={this.state.popupOnSelect}
+                                    onChange={val => this.setState({ popupOnSelect: val.target.checked })} />
+                                Display pop-up when I select a word or phrase
+                            </label>
+                        </div>
+                        <div className="option-value-secondary">
+                            <span>Trigger key:</span>
+                            <select disabled={isDisabled || !this.state.popupOnSelect}
+                                value={this.state.popupOnSelectTriggerKey}
+                                onChange={val => this.setState({ popupOnSelectTriggerKey: parseInt(val.target.value) })}>
+                                <option value={TriggerKey.None}>None</option>
+                                <option value={TriggerKey.Ctrl}>Ctrl</option>
+                                <option value={TriggerKey.Alt}>Alt</option>
+                                <option value={TriggerKey.Shilf}>Shift</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div className="option-row">
+                    <input type="submit" value="Save" disabled={isDisabled} />
+                    <div className="saved-status" hidden={this.state.status != OptionStatus.Saved}>✔ Options saved</div>
+                </div>
             </form>
         );
     }
@@ -73,49 +130,12 @@ export class OptionsComponent extends React.Component<any, OptionsComponentState
         return res;
     }
 
-    handleApiKeyChange(event: React.ChangeEvent<HTMLInputElement>): void {
-        this.setState(
-            {
-                settings:
-                {
-                    yandexDictionaryApiKey: event.target.value,
-                    availableDecks: this.state.settings.availableDecks,
-                    targetDeck: this.state.settings.targetDeck,
-                }
-            });
-    }
-
-    handleTargetDeckChange(newDeckChoice?: OptionType, actionMeta?: ActionMeta<OptionType>): void {
-        if (newDeckChoice) {
-            this.setState(
-                {
-                    settings:
-                    {
-                        yandexDictionaryApiKey: this.state.settings.yandexDictionaryApiKey,
-                        availableDecks: this.state.settings.availableDecks,
-                        targetDeck: newDeckChoice.value,
-                    }
-                });
-        }
-        else {
-            this.setState(
-                {
-                    settings:
-                    {
-                        yandexDictionaryApiKey: this.state.settings.yandexDictionaryApiKey,
-                        availableDecks: this.state.settings.availableDecks,
-                        targetDeck: null,
-                    }
-                });
-        }
-    }
-
     handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
         this.setState({
-            status: OptionStatus.Saving,
+            status: OptionStatus.Saving
         })
-        const request : SaveExtensionOptionsRequest = {
-            extensionOptionsToSave: this.state.settings
+        const request: SaveExtensionOptionsRequest = {
+            extensionOptionsToSave: this.state
         }
         chrome.runtime.sendMessage(request);
         event.preventDefault();
@@ -133,28 +153,23 @@ export class OptionsComponent extends React.Component<any, OptionsComponentState
         chrome.runtime.onMessage.removeListener(this.handleRuntimeMessage);
     }
 
-    handleRuntimeMessage(message : any, sender : chrome.runtime.MessageSender) : void {
+    handleRuntimeMessage(message: any, sender: chrome.runtime.MessageSender): void {
         if (message && message.extensionOptions) {
-            var optionsReponse = message as GetExtensionOptionsResponse;
-            this.setState({
-                status: OptionStatus.Loaded,
-                settings: optionsReponse.extensionOptions
-            });
+            const optionsReponse = message as GetExtensionOptionsResponse;
+            const newState = optionsReponse.extensionOptions as OptionsComponentState;
+            newState.status = OptionStatus.Loaded;
+            this.setState(newState);
         }
         if (message && message.optionsSaved) {
             this.setState({
                 status: OptionStatus.Saved
             });
             setTimeout(() => {
-                this.setState(state => {
-                    if (state.status == OptionStatus.Saved) {
-                        return {
-                            status: OptionStatus.Loaded,
-                            availableDecks: state.settings.availableDecks
-                        }
-                    }
-                    return state;
-                });
+                if (this.state.status == OptionStatus.Saved) {
+                    this.setState({
+                        status: OptionStatus.Loaded
+                    });
+                }
             }, 750);
         }
     }

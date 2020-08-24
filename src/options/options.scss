@@ -1,4 +1,43 @@
+body {
+    color: #222;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 13px;
+}
+
 .saved-status {
     color: green;
     font-weight: bold;
+}
+
+.option-row {
+    margin-top: 40px
+}
+
+.option-row:after {
+    clear: both;
+    content: "";
+    display: table
+}
+
+.option-name {
+    float: left;
+    font-weight: bold;
+    width: 180px
+}
+
+.option-value {
+    float: left;
+    min-width: 250px;
+}
+
+.option-value-primary:not(:first-of-type) {
+    margin-top: 20px
+}
+
+.option-value-secondary {
+    margin: 5px 0 0 40px
+}
+
+input[type="text"] {
+    width: 100%;
 }

@@ -2,6 +2,8 @@ import './contentscript.scss';
 import * as React from "react";
 import ReactDOM = require('react-dom');
 import { TranslationMenu } from './translationmenu';
+import { GetExtensionOptionsRequest } from '../base/communicationMessages';
+import { ExtensionOptions, TriggerKey } from '../base/extensionOptions';
 
 export interface SelectionInfo {
     text: string;
@@ -17,10 +19,15 @@ export interface BubbleState {
 }
 
 export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
+    options?: ExtensionOptions;
+
     constructor(props: BubbleViewModel) {
         super(props);
-        this.handleClickOutside = this.handleClickOutside.bind(this);
+        this.handleMouseUp = this.handleMouseUp.bind(this);
         this.handleChromeRuntimeMessage = this.handleChromeRuntimeMessage.bind(this);
+        this.handleDoubleClick = this.handleDoubleClick.bind(this);
+        this.showBubble = this.showBubble.bind(this);
+        this.checkTriggerKey = this.checkTriggerKey.bind(this);
         this.state = {
             visible: false,
             currentSelection: null,
@@ -38,41 +45,76 @@ export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
     }
 
     componentDidMount() {
-        document.addEventListener('mousedown', this.handleClickOutside);
+        document.addEventListener('mouseup', this.handleMouseUp);
+        document.addEventListener('dblclick', this.handleDoubleClick)
         chrome.runtime.onMessage.addListener(this.handleChromeRuntimeMessage);
+        const request : GetExtensionOptionsRequest = {optionsRequest: "contentScript"}
+        chrome.runtime.sendMessage(request);
     }
 
     componentWillUnmount() {
-        document.removeEventListener('mousedown', this.handleClickOutside);
+        document.removeEventListener('mouseup', this.handleMouseUp);
+        document.removeEventListener('dblclick', this.handleDoubleClick);
         chrome.runtime.onMessage.removeListener(this.handleChromeRuntimeMessage);
     }
 
-    handleClickOutside(event: MouseEvent): void {
-        const domNode = ReactDOM.findDOMNode(this);
-        const target = event.target as Node;
+    handleMouseUp(event: MouseEvent): void {
 
-        if (!domNode || !domNode.contains(target)) {
+        if (this.state.visible) {
+            const domNode = ReactDOM.findDOMNode(this);
+            const target = event.target as Node;
+            if (!domNode || !domNode.contains(target))
             this.setState({
                 visible: false
             });
+        }
+
+        if (this.options
+            && this.options.popupOnSelect
+            && event.button == 0
+            && this.checkTriggerKey(event, this.options.popupOnSelectTriggerKey)) {
+                this.showBubble();
+            }
+    }
+
+    handleDoubleClick(event: MouseEvent): void {
+        if (this.options
+            && this.options.popupOnDoubleClick
+            && event.button == 0
+            && this.checkTriggerKey(event, this.options.popupOnDoubleClickTriggerKey)) {
+            this.showBubble();
         }
     }
 
     handleChromeRuntimeMessage(request: any) {
         if (request.operation == "showBubble") {
-            const selection = window.getSelection();
-            const selectionText = selection.toString();
-            if (selectionText.length > 0 && this.isSourceLanguageText(selectionText)) {
-                const rect = selection.getRangeAt(0).getBoundingClientRect();
-                const selectionInfo: SelectionInfo = {
-                    rect: this.offset(rect, window.pageXOffset, window.pageYOffset),
-                    text: selection.toString().trim(),
-                }
-                this.setState({
-                    visible: true,
-                    currentSelection: selectionInfo,
-                });
+            this.showBubble();
+        }
+        if (request.extensionOptions) {
+            this.options = request.extensionOptions as ExtensionOptions;
+        }
+    }
+
+    checkTriggerKey(event: MouseEvent, triggerKey: TriggerKey) : boolean {
+        return triggerKey == TriggerKey.None
+            || triggerKey == TriggerKey.Alt && event.altKey
+            || triggerKey == TriggerKey.Ctrl && event.ctrlKey
+            || triggerKey == TriggerKey.Shilf && event.shiftKey;
+    }
+
+    showBubble() : void {
+        const selection = window.getSelection();
+        const selectionText = selection.toString().trim();
+        if (selectionText.length > 0 && this.isSourceLanguageText(selectionText)) {
+            const rect = selection.getRangeAt(0).getBoundingClientRect();
+            const selectionInfo: SelectionInfo = {
+                rect: this.offset(rect, window.pageXOffset, window.pageYOffset),
+                text: selection.toString().trim(),
             }
+            this.setState({
+                visible: true,
+                currentSelection: selectionInfo,
+            });
         }
     }
 

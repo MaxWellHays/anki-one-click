@@ -1,6 +1,7 @@
 import { GetExtensionOptionsResponse, SaveExtensionOptionsResponse, TranslateResponse, WordTranslation, ChangeWordTranslationStateRequest } from '../base/communicationMessages';
 import { AnkiConnectApi, DeckId } from '../base/ankiConnectApi';
 import { YandexDictionaryClient, YandexTranslateResponse } from './yandexDictionaryClient';
+import { TriggerKey } from '../base/extensionOptions';
 
 chrome.runtime.onInstalled.addListener(extensionInstalled);
 
@@ -132,10 +133,19 @@ chrome.runtime.onMessage.addListener((message, sender) => {
                 extensionOptions : {
                     availableDecks: decks,
                     yandexDictionaryApiKey: settings["yandexDictionaryApiKey"],
-                    targetDeck: decks.find(d => d.id == settings["targetDeck"]?.id)
+                    targetDeck: decks.find(d => d.id == settings["targetDeck"]?.id),
+                    popupOnDoubleClick: settings["popupOnDoubleClick"] ?? false,
+                    popupOnSelect: settings["popupOnSelect"] ?? false,
+                    popupOnDoubleClickTriggerKey: settings["popupOnDoubleClickTriggerKey"] ?? TriggerKey.None,
+                    popupOnSelectTriggerKey: settings["popupOnSelectTriggerKey"] ?? TriggerKey.None,
                 }
             }
-            chrome.runtime.sendMessage(response);
+            if (sender.tab) {
+                chrome.tabs.sendMessage(sender.tab.id, response);
+            }
+            else {
+                chrome.runtime.sendMessage(response);
+            }
         })
     }
     if (message.extensionOptionsToSave) {

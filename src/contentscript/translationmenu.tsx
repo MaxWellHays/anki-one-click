@@ -105,14 +105,14 @@ export class WordTranslationComponent extends React.Component<WordTranslationInf
                 <input type="checkbox"
                     checked={this.props.translation.isInDictionary}
                     disabled={this.props.isInProgress}
-                    onClick={this.handleInputClicked} />
+                    onChange={this.handleInputClicked} />
             </div>
 
             {this.props.translation.translation}
         </label>);
     }
 
-    handleInputClicked(event: React.MouseEvent<HTMLInputElement, MouseEvent>) : void {
-        this.props.onTranslationStateChanged(this.props.translation, !this.props.translation.isInDictionary);
+    handleInputClicked(event: React.ChangeEvent<HTMLInputElement>) : void {
+        this.props.onTranslationStateChanged(this.props.translation, event.target.checked);
     }
 }

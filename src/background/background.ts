@@ -111,7 +111,7 @@ function generateTranslateResponse(sourceText : string,outsideTranslations : Wor
 }
 
 chrome.runtime.onMessage.addListener((message, sender) => {
-    if (message.sourceTextToTranslate) {
+    if (message.sourceTextToTranslate && Object.keys(message).length == 1) {
         const sourceText = message.sourceTextToTranslate;
         Promise.all([getYandexTranslations(sourceText), getExistingTranslations(sourceText)]).then(vals => {
             const outsideTranslations = vals[0];

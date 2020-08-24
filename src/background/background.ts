@@ -39,6 +39,10 @@ function getYandexDictionaryApiKey() : Promise<string> {
     return getSettingsFromStorage().then(settings => settings["yandexDictionaryApiKey"]);
 }
 
+function getSelectedDeckName() : Promise<string> {
+    return getSettingsFromStorage().then(settings => settings["targetDeck"].name);
+}
+
 function setSettingsInStorage(settings: any) : Promise<void> {
     return new Promise(resolve => {
         chrome.storage.sync.set(settings, () => {
@@ -74,15 +78,34 @@ var yandexDictionaryApi = new YandexDictionaryClient();
 
 chrome.runtime.onMessage.addListener((message, sender) => {
     if (message.sourceTextToTranslate) {
+        var sourceToTranslate = message.sourceTextToTranslate;
         var apiKeyPromise = getYandexDictionaryApiKey();
-        var translationsPromise = apiKeyPromise.then(apiKey => yandexDictionaryApi.translate(apiKey, message.sourceTextToTranslate));
-        translationsPromise.then(translations => {
+        var translationsPromise = apiKeyPromise.then(apiKey => yandexDictionaryApi.translate(apiKey, sourceToTranslate));
+        var currentDeckPromise = getSelectedDeckName();
+        var existingTranslationsPromise = currentDeckPromise.then(deckName => ankiConnection.getExistingTranslationOfWord(deckName, sourceToTranslate))
+        Promise.all([translationsPromise, existingTranslationsPromise]).then(vals => {
+            const outsideTranslations = getWordTranslationsList(vals[0]);
+            const existingTranslations = vals[1];
+
+            for (let existingTranslation of existingTranslations) {
+                const index = outsideTranslations.findIndex(tr => tr.translation == existingTranslation);
+                if (index >= 0) {
+                    outsideTranslations[index].isInDictionary = true;
+                }
+                else {
+                    outsideTranslations.push({
+                        isInDictionary: true,
+                        translation: existingTranslation,
+                    });
+                }
+            }
+
             const response : TranslateResponse = {
-                sourceTextToTranslate: message.sourceTextToTranslate,
-                translations: getWordTranslationsList(translations)
+                sourceTextToTranslate: sourceToTranslate,
+                translations: outsideTranslations,
             }
             chrome.tabs.sendMessage(sender.tab.id, response);
-        })
+        });
     }
     if (message.optionsRequest) {
         var settingsPromise = getSettingsFromStorage();

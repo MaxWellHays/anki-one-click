@@ -34,17 +34,18 @@ export class TranslationMenu extends React.Component<TranslationSourceInfo, Tran
     render() {
         let translations;
         if (this.state.translations) {
-            const translationsList = this.state.translations.map(tr => <li key={tr.translation}>{tr.translation}</li>);
-            translations = (<ul>
+            const translationsList = this.state.translations.map(tr =>
+                <WordTranslationComponent key={tr.translation} isInDictionary={tr.isInDictionary} translation={tr.translation} />);
+            translations = (<div>
                 {translationsList}
-            </ul>);
+            </div>);
         }
         else {
             translations = null;
         }
         return (
             <div>
-                <div>
+                <div className="anki-one-click-source-word">
                     {this.props.sourceText}
                 </div>
                 {translations}
@@ -56,5 +57,26 @@ export class TranslationMenu extends React.Component<TranslationSourceInfo, Tran
             const translationReponse = request as TranslateResponse;
             this.setState({translations: translationReponse.translations})
         }
+    }
+}
+
+export class WordTranslationComponent extends React.Component<WordTranslation> {
+    constructor(props: WordTranslation) {
+        super(props);
+        this.getStatusSymbol = this.getStatusSymbol.bind(this);
+    }
+
+    render() {
+        return (<div>
+            {this.getStatusSymbol()}
+            {this.props.translation}
+        </div>);
+    }
+
+    getStatusSymbol() : string {
+        if (this.props.isInDictionary) {
+            return "☑️"
+        }
+        return "⬜";
     }
 }

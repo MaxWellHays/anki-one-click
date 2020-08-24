@@ -66,7 +66,7 @@ export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
                 const rect = selection.getRangeAt(0).getBoundingClientRect();
                 const selectionInfo: SelectionInfo = {
                     rect: this.offset(rect, window.pageXOffset, window.pageYOffset),
-                    text: selection.toString(),
+                    text: selection.toString().trim(),
                 }
                 this.setState({
                     visible: true,

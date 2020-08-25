@@ -119,7 +119,12 @@ chrome.runtime.onMessage.addListener((message, sender) => {
             const existingTranslations = vals[1];
 
             const response = generateTranslateResponse(sourceText, outsideTranslations, existingTranslations);
-            chrome.tabs.sendMessage(sender.tab.id, response);
+            if (sender.tab) {
+                chrome.tabs.sendMessage(sender.tab.id, response);
+            }
+            else {
+                chrome.runtime.sendMessage(response);
+            }
         });
     }
     if (message.optionsRequest) {
@@ -165,7 +170,12 @@ chrome.runtime.onMessage.addListener((message, sender) => {
         Promise.all([updateTranslations, getYandexTranslations(request.sourceTextToTranslate)])
             .then(vals => {
                 const response = generateTranslateResponse(request.sourceTextToTranslate, vals[1], vals[0]);
-                chrome.tabs.sendMessage(sender.tab.id, response)
+                if (sender.tab) {
+                    chrome.tabs.sendMessage(sender.tab.id, response);
+                }
+                else {
+                    chrome.runtime.sendMessage(response);
+                }
             });
     }
 });

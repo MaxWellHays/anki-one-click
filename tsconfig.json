@@ -8,7 +8,8 @@
     "types": ["@types/chrome", "node"],
     "typeRoots": ["node_modules/@types"],
     "moduleResolution": "node",
-    "lib": ["es2017", "dom"]
+    "lib": ["es2017", "dom"],
+    "esModuleInterop": true
   },
-  "include": ["src/background", "src/contentscript"]
+  "include": ["src/background", "src/contentscript", "src/options", "src/popup", "src/base/translationmenu.tsx"]
 }

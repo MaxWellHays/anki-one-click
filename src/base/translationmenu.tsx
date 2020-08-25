@@ -1,6 +1,7 @@
+import './translationmenu.scss';
 import React = require("react");
 import ReactDOM = require('react-dom');
-import { TranslateRequest, WordTranslation, TranslateResponse, ChangeWordTranslationStateRequest } from "../base/communicationMessages";
+import { TranslateRequest, WordTranslation, TranslateResponse, ChangeWordTranslationStateRequest } from "./communicationMessages";
 
 export interface TranslationMenuSourceInfo {
     sourceText: string;
@@ -25,7 +26,7 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
 
     componentDidMount() {
         chrome.runtime.onMessage.addListener(this.handleChromeRuntimeMessage);
-        const request : TranslateRequest = {
+        const request: TranslateRequest = {
             sourceTextToTranslate: this.props.sourceText
         };
         chrome.runtime.sendMessage(request);
@@ -38,14 +39,9 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
     render() {
         let translations;
         if (this.state.translations) {
-            const translationsList = this.state.translations
-                .map(tr => (<WordTranslationComponent key={tr.translation}
-                                isInProgress={this.state.wordsInProcess.has(tr)}
-                                translation={tr}
-                                onTranslationStateChanged={this.handleAddOrRemoveTranslation} />));
-            translations = (<div>
-                {translationsList}
-            </div>);
+            translations = <TranslationsListComponent
+                handleAddOrRemoveTranslation={this.handleAddOrRemoveTranslation}
+                items={this.state} />
         }
         else {
             translations = null;
@@ -69,12 +65,12 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
         }
     }
 
-    handleAddOrRemoveTranslation(translation: WordTranslation, added: boolean) : void {
+    handleAddOrRemoveTranslation(translation: WordTranslation, added: boolean): void {
         this.setState(oldState => {
             const newSet = new Set<WordTranslation>(oldState.wordsInProcess);
             newSet.add(translation);
             translation.isInDictionary = !translation.isInDictionary;
-            const changeTranslations : ChangeWordTranslationStateRequest = {
+            const changeTranslations: ChangeWordTranslationStateRequest = {
                 newTranslations: this.state.translations.filter(tr => tr.isInDictionary).map(tr => tr.translation),
                 sourceTextToTranslate: this.props.sourceText
             }
@@ -84,6 +80,24 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
                 wordsInProcess: newSet
             }
         });
+    }
+}
+
+export interface TranslationsListComponentProps {
+    handleAddOrRemoveTranslation: (translation: WordTranslation, added: boolean) => void;
+    items: TranslationMenuState;
+}
+
+export class TranslationsListComponent extends React.Component<TranslationsListComponentProps> {
+    render() {
+        const translationsList = this.props.items.translations.map(tr => (<WordTranslationComponent key={tr.translation}
+            isInProgress={this.props.items.wordsInProcess.has(tr)}
+            translation={tr}
+            onTranslationStateChanged={this.props.handleAddOrRemoveTranslation} />))
+
+        return (<div>
+            {translationsList}
+        </div>)
     }
 }
 
@@ -112,7 +126,7 @@ export class WordTranslationComponent extends React.Component<WordTranslationInf
         </label>);
     }
 
-    handleInputClicked(event: React.ChangeEvent<HTMLInputElement>) : void {
+    handleInputClicked(event: React.ChangeEvent<HTMLInputElement>): void {
         this.props.onTranslationStateChanged(this.props.translation, event.target.checked);
     }
 }

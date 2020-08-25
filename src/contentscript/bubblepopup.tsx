@@ -1,7 +1,7 @@
 import './contentscript.scss';
 import * as React from "react";
 import ReactDOM = require('react-dom');
-import { TranslationMenu } from './translationmenu';
+import { TranslationMenu } from '../base/translationmenu';
 import { GetExtensionOptionsRequest } from '../base/communicationMessages';
 import { ExtensionOptions, TriggerKey } from '../base/extensionOptions';
 import { SelectionHelper } from './selectionhelper';

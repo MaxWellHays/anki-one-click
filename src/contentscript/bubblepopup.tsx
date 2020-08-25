@@ -4,10 +4,12 @@ import ReactDOM = require('react-dom');
 import { TranslationMenu } from './translationmenu';
 import { GetExtensionOptionsRequest } from '../base/communicationMessages';
 import { ExtensionOptions, TriggerKey } from '../base/extensionOptions';
+import { SelectionHelper } from './selectionhelper';
 
 export interface SelectionInfo {
     text: string;
     rect: DOMRect;
+    context: string;
 }
 
 export interface BubbleViewModel {
@@ -20,6 +22,7 @@ export interface BubbleState {
 
 export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
     options?: ExtensionOptions;
+    selectionHelper: SelectionHelper;
 
     constructor(props: BubbleViewModel) {
         super(props);
@@ -28,6 +31,7 @@ export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
         this.handleDoubleClick = this.handleDoubleClick.bind(this);
         this.showBubble = this.showBubble.bind(this);
         this.checkTriggerKey = this.checkTriggerKey.bind(this);
+        this.selectionHelper = new SelectionHelper();
         this.state = {
             visible: false,
             currentSelection: null,
@@ -110,6 +114,7 @@ export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
             const selectionInfo: SelectionInfo = {
                 rect: this.offset(rect, window.pageXOffset, window.pageYOffset),
                 text: selection.toString().trim(),
+                context: this.selectionHelper.extractContext(selection)
             }
             this.setState({
                 visible: true,

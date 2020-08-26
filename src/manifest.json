@@ -1,0 +1,49 @@
+{
+    "manifest_version": 2,
+    "name": "Anki One Click",
+    "version": "<%= package.version %>",
+    "short_name": "Anki One Click Chrome Extension",
+    "description": "<%= package.description %>",
+    "permissions": [
+        "tabs",
+        "activeTab",
+        "storage",
+        "declarativeContent",
+        "contextMenus"
+    ],
+    "options_page": "options.html",
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": true
+    },
+    "icons": {
+        "16": "./assets/icon16.png",
+        "32": "./assets/icon32.png",
+        "48": "./assets/icon48.png",
+        "128": "./assets/icon128.png"
+    },
+    "browser_action": {
+        "default_popup": "popup.html",
+        "default_icon": "./assets/icon32.png"
+    },
+    "content_scripts": [
+        {
+            "js": [
+                "contentscript.js"
+            ],
+            "css": [
+                "contentscript.css"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ],
+    "background": {
+        "scripts": [
+            "background.js"
+        ],
+        "persistent": false
+    },
+    "content_security_policy": "script-src 'self' 'unsafe-eval' 'sha256-V/iEy/JDsKiWnn/Sob0oSf4ctpuI27zHmLnLyOfgQ58='; object-src 'self'"
+}

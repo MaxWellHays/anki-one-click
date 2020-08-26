@@ -1,7 +1,7 @@
 {
   "name": "anki-click-one-extension",
-  "version": "0.1.0",
-  "description": "Anki Click One Extension",
+  "version": "0.0.1",
+  "description": "Add unknown words and translations to anki in one click in browser",
   "homepage": "https://github.com/MaxWellHays/anki-one-click",
   "scripts": {
     "clean": "rm -rf dist && cpy manifest.json dist && cpy src/assets/* dist/assets",
@@ -41,6 +41,7 @@
     "@types/webpack": "^4.41.21",
     "awesome-typescript-loader": "^5.2.1",
     "bestzip": "2.1.5",
+    "copy-webpack-plugin": "^6.0.3",
     "cpy-cli": "2.0.0",
     "cra-build-watch": "3.0.0",
     "cross-env": "^7.0.2",
@@ -54,7 +55,8 @@
     "tslint": "5.20.1",
     "typescript": "^3.9.5",
     "webpack": "^4.42.0",
-    "webpack-cli": "3.3.10"
+    "webpack-cli": "3.3.10",
+    "webpack-version-file-plugin": "^0.4.0"
   },
   "dependencies": {
     "@types/react-select": "^3.0.19",

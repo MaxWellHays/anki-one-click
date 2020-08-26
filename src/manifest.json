@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "Anki One Click",
-    "version": "<%= package.version %>",
+    "version": "<%= package.version %>.<%= extras.buildNumber %>",
     "short_name": "Anki One Click Chrome Extension",
     "description": "<%= package.description %>",
     "permissions": [

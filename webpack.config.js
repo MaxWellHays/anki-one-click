@@ -5,6 +5,7 @@ const path = require('path');
 const { FileLoaderPlugin } = require('file-loader');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const VersionFilePlugin = require('webpack-version-file-plugin');
+const { env } = require('process');
 
 let prodPlugins = [];
 
@@ -56,6 +57,9 @@ module.exports = {
             packageFile: path.resolve(__dirname, 'package.json'),
             template: path.resolve(__dirname, 'src/manifest.json'),
             outputFile: path.resolve(__dirname, 'dist/manifest.json'),
+            extras: {
+                'buildNumber': env.GITHUB_RUN_NUMBER || "0"
+            }
         })
     ],
     resolve: {

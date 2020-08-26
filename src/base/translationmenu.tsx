@@ -1,15 +1,15 @@
 import './translationmenu.scss';
 import React = require("react");
 import ReactDOM = require('react-dom');
-import { TranslateRequest, WordTranslation, TranslateResponse, ChangeWordTranslationStateRequest } from "./communicationMessages";
+import * as Messages from "./communicationMessages";
 
 export interface TranslationMenuSourceInfo {
     sourceText: string;
 }
 
 export interface TranslationMenuState {
-    translations?: WordTranslation[];
-    wordsInProcess: Set<WordTranslation>;
+    translations?: Messages.WordTranslation[];
+    wordsInProcess: Set<Messages.WordTranslation>;
 }
 
 export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, TranslationMenuState> {
@@ -20,14 +20,17 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
         this.handleAddOrRemoveTranslation = this.handleAddOrRemoveTranslation.bind(this);
         this.state = {
             translations: null,
-            wordsInProcess: new Set<WordTranslation>(),
+            wordsInProcess: new Set<Messages.WordTranslation>(),
         }
     }
 
     componentDidMount() {
         chrome.runtime.onMessage.addListener(this.handleChromeRuntimeMessage);
-        const request: TranslateRequest = {
-            sourceTextToTranslate: this.props.sourceText
+        const request: Messages.Action = {
+            type: "TranslateRequest",
+            content: {
+                sourceTextToTranslate: this.props.sourceText
+            }
         };
         chrome.runtime.sendMessage(request);
     }
@@ -55,24 +58,27 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
             </div>);
     }
 
-    handleChromeRuntimeMessage(request: any) {
-        if (request.translations && request.sourceTextToTranslate == this.props.sourceText) {
-            const translationReponse = request as TranslateResponse;
+    handleChromeRuntimeMessage(request: Messages.Action) {
+        if (Messages.isTranslateResponse(request)) {
+            const translationReponse = request.content;
             this.setState({
                 translations: translationReponse.translations,
-                wordsInProcess: new Set<WordTranslation>()
+                wordsInProcess: new Set<Messages.WordTranslation>()
             })
         }
     }
 
-    handleAddOrRemoveTranslation(translation: WordTranslation, added: boolean): void {
+    handleAddOrRemoveTranslation(translation: Messages.WordTranslation, added: boolean): void {
         this.setState(oldState => {
-            const newSet = new Set<WordTranslation>(oldState.wordsInProcess);
+            const newSet = new Set<Messages.WordTranslation>(oldState.wordsInProcess);
             newSet.add(translation);
             translation.isInDictionary = !translation.isInDictionary;
-            const changeTranslations: ChangeWordTranslationStateRequest = {
-                newTranslations: this.state.translations.filter(tr => tr.isInDictionary).map(tr => tr.translation),
-                sourceTextToTranslate: this.props.sourceText
+            const changeTranslations: Messages.Action = {
+                type: "ChangeWordTranslationStateRequest",
+                content: {
+                    newTranslations: this.state.translations.filter(tr => tr.isInDictionary).map(tr => tr.translation),
+                    sourceTextToTranslate: this.props.sourceText
+                }
             }
             chrome.runtime.sendMessage(changeTranslations);
 
@@ -84,7 +90,7 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
 }
 
 export interface TranslationsListComponentProps {
-    handleAddOrRemoveTranslation: (translation: WordTranslation, added: boolean) => void;
+    handleAddOrRemoveTranslation: (translation: Messages.WordTranslation, added: boolean) => void;
     items: TranslationMenuState;
 }
 
@@ -102,9 +108,9 @@ export class TranslationsListComponent extends React.Component<TranslationsListC
 }
 
 export interface WordTranslationInfo {
-    translation: WordTranslation;
+    translation: Messages.WordTranslation;
     isInProgress: boolean;
-    onTranslationStateChanged: ((translation: WordTranslation, added: boolean) => void)
+    onTranslationStateChanged: ((translation: Messages.WordTranslation, added: boolean) => void)
 }
 
 export class WordTranslationComponent extends React.Component<WordTranslationInfo> {

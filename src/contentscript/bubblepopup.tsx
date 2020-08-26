@@ -2,7 +2,7 @@ import './contentscript.scss';
 import * as React from "react";
 import ReactDOM = require('react-dom');
 import { TranslationMenu } from '../base/translationmenu';
-import { GetExtensionOptionsRequest } from '../base/communicationMessages';
+import * as Messages from '../base/communicationMessages';
 import { ExtensionOptions, TriggerKey } from '../base/extensionOptions';
 import { SelectionHelper } from './selectionhelper';
 
@@ -52,7 +52,7 @@ export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
         document.addEventListener('mouseup', this.handleMouseUp);
         document.addEventListener('dblclick', this.handleDoubleClick)
         chrome.runtime.onMessage.addListener(this.handleChromeRuntimeMessage);
-        const request : GetExtensionOptionsRequest = {optionsRequest: "contentScript"}
+        const request : Messages.Action = {type: "GetExtensionOptionsRequest"}
         chrome.runtime.sendMessage(request);
     }
 
@@ -90,12 +90,12 @@ export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
         }
     }
 
-    handleChromeRuntimeMessage(request: any) {
-        if (request.operation == "showBubble") {
+    handleChromeRuntimeMessage(request: Messages.Action) {
+        if (Messages.isShowBubbleRequest(request)) {
             this.showBubble();
         }
-        if (request.extensionOptions) {
-            this.options = request.extensionOptions as ExtensionOptions;
+        if (Messages.isGetExtensionOptionsResponse(request)) {
+            this.options = request.content.extensionOptions;
         }
     }
 

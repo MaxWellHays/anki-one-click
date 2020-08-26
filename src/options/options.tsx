@@ -2,11 +2,10 @@ import './options.scss';
 import './options.html';
 import * as React from "react";
 import ReactDOM = require('react-dom');
-import Select, { ValueType, ActionMeta } from 'react-select';
+import Select from 'react-select';
 import { DeckId } from '../base/ankiConnectApi';
 import { ExtensionOptions, TriggerKey } from '../base/extensionOptions';
-import { GetExtensionOptionsRequest, GetExtensionOptionsResponse, SaveExtensionOptionsRequest } from '../base/communicationMessages';
-import { throws } from 'assert';
+import * as Messages from '../base/communicationMessages';
 
 enum OptionStatus {
     Loading,
@@ -134,8 +133,11 @@ export class OptionsComponent extends React.Component<any, OptionsComponentState
         this.setState({
             status: OptionStatus.Saving
         })
-        const request: SaveExtensionOptionsRequest = {
-            extensionOptionsToSave: this.state
+        const request: Messages.Action = {
+            type: "SaveExtensionOptionsRequest",
+            content: {
+                extensionOptionsToSave: this.state
+            }
         }
         chrome.runtime.sendMessage(request);
         event.preventDefault();
@@ -143,8 +145,8 @@ export class OptionsComponent extends React.Component<any, OptionsComponentState
 
     componentDidMount() {
         chrome.runtime.onMessage.addListener(this.handleRuntimeMessage);
-        const request: GetExtensionOptionsRequest = {
-            optionsRequest: "options"
+        const request: Messages.Action = {
+            type: "GetExtensionOptionsRequest",
         }
         chrome.runtime.sendMessage(request);
     }
@@ -153,14 +155,13 @@ export class OptionsComponent extends React.Component<any, OptionsComponentState
         chrome.runtime.onMessage.removeListener(this.handleRuntimeMessage);
     }
 
-    handleRuntimeMessage(message: any, sender: chrome.runtime.MessageSender): void {
-        if (message && message.extensionOptions) {
-            const optionsReponse = message as GetExtensionOptionsResponse;
-            const newState = optionsReponse.extensionOptions as OptionsComponentState;
+    handleRuntimeMessage(wrapper: Messages.Action, sender: chrome.runtime.MessageSender): void {
+        if (Messages.isGetExtensionOptionsResponse(wrapper)) {
+            const newState = wrapper.content.extensionOptions as OptionsComponentState;
             newState.status = OptionStatus.Loaded;
             this.setState(newState);
         }
-        if (message && message.optionsSaved) {
+        if (Messages.isSaveExtensionOptionsResponse(wrapper)) {
             this.setState({
                 status: OptionStatus.Saved
             });

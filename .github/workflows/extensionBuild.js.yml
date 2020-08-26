@@ -24,7 +24,9 @@ jobs:
     - name: get-npm-version
       id: package-version
       uses: martinbeentjes/npm-get-version-action@master
+    - name: Inject slug/short variables
+      uses: rlespinasse/github-slug-action@v2.x
     - uses: actions/upload-artifact@v2
       with:
-        name: extensionBuild-${{ github.ref }}-${{ steps.package-version.outputs.current-version}}.${{ github.run_number }}
+        name: extensionBuild-${{ env.GITHUB_REF_SLUG_URL }}-${{ steps.package-version.outputs.current-version}}.${{ github.run_number }}
         path: dist

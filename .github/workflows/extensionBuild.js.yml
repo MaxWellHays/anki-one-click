@@ -26,5 +26,5 @@ jobs:
       uses: martinbeentjes/npm-get-version-action@master
     - uses: actions/upload-artifact@v2
       with:
-        name: extensionBuild-${{ steps.package-version.outputs.current-version}}.${{ env.GITHUB_RUN_NUMBER}}
+        name: extensionBuild-${{ github.run_number }}-${{ steps.package-version.outputs.current-version}}.${{ github.run_number }}
         path: dist

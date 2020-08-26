@@ -11,5 +11,5 @@
     "lib": ["es2017", "dom"],
     "esModuleInterop": true
   },
-  "include": ["src/background", "src/contentscript", "src/options", "src/popup", "src/base/translationmenu.tsx"]
+  "include": ["src/background", "src/contentscript", "src/options", "src/popup", "src/base/translationmenu"]
 }

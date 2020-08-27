@@ -14,6 +14,8 @@ export interface PopupState {
 const requestTranslationsDebounced = AwesomeDebouncePromise((text : string) => text, 500);
 
 export class PopupComponent extends React.Component<any, PopupState> {
+    wordInput: HTMLInputElement;
+
     constructor(props : any) {
         super(props);
         this.state = {
@@ -30,11 +32,17 @@ export class PopupComponent extends React.Component<any, PopupState> {
         }
         return (<div>
             <input type="text"
+                ref={(input) => {this.wordInput = input; }}
                 placeholder="Enter word to translate"
+                id="anki-one-click-word-for-translation"
                 value={this.state.enteredText}
                 onChange={this.onInputTextChange}/>
             {translationMenu}
         </div>);
+    }
+
+    componentDidMount() {
+        this.wordInput.focus();
     }
 
     async onInputTextChange(event: ChangeEvent<HTMLInputElement>) : Promise<void> {

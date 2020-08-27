@@ -5,6 +5,7 @@ import { TranslationMenu } from '../base/translationmenu';
 import * as Messages from '../base/communicationMessages';
 import { ExtensionOptions, TriggerKey } from '../base/extensionOptions';
 import { SelectionHelper } from './selectionhelper';
+import { Subscription } from 'rxjs';
 
 export interface SelectionInfo {
     text: string;
@@ -23,11 +24,12 @@ export interface BubbleState {
 export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
     options?: ExtensionOptions;
     selectionHelper: SelectionHelper;
+    subscriptions: Subscription[];
 
     constructor(props: BubbleViewModel) {
         super(props);
+        this.subscriptions = [];
         this.handleMouseUp = this.handleMouseUp.bind(this);
-        this.handleChromeRuntimeMessage = this.handleChromeRuntimeMessage.bind(this);
         this.handleDoubleClick = this.handleDoubleClick.bind(this);
         this.showBubble = this.showBubble.bind(this);
         this.checkTriggerKey = this.checkTriggerKey.bind(this);
@@ -50,16 +52,23 @@ export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
 
     componentDidMount() {
         document.addEventListener('mouseup', this.handleMouseUp);
-        document.addEventListener('dblclick', this.handleDoubleClick)
-        chrome.runtime.onMessage.addListener(this.handleChromeRuntimeMessage);
-        const request : Messages.Action = {type: "GetExtensionOptionsRequest"}
-        chrome.runtime.sendMessage(request);
+        document.addEventListener('dblclick', this.handleDoubleClick);
+        this.subscriptions.push(
+            Messages.showBubbleRequestStream.subscribe(() => this.showBubble())
+        );
+        this.subscriptions.push(
+            Messages.extensionOptionsResponseStream.subscribe(([response]) => this.options = response)
+        );
+        Messages.sendExtensionOptionsRequest(null);
     }
 
     componentWillUnmount() {
         document.removeEventListener('mouseup', this.handleMouseUp);
         document.removeEventListener('dblclick', this.handleDoubleClick);
-        chrome.runtime.onMessage.removeListener(this.handleChromeRuntimeMessage);
+        for (let sub of this.subscriptions) {
+            sub.unsubscribe();
+        }
+        this.subscriptions = [];
     }
 
     handleMouseUp(event: MouseEvent): void {
@@ -87,15 +96,6 @@ export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
             && event.button == 0
             && this.checkTriggerKey(event, this.options.popupOnDoubleClickTriggerKey)) {
             this.showBubble();
-        }
-    }
-
-    handleChromeRuntimeMessage(request: Messages.Action) {
-        if (Messages.isShowBubbleRequest(request)) {
-            this.showBubble();
-        }
-        if (Messages.isGetExtensionOptionsResponse(request)) {
-            this.options = request.content.extensionOptions;
         }
     }
 

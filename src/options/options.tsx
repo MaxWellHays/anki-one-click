@@ -6,6 +6,7 @@ import Select from 'react-select';
 import { DeckId } from '../base/ankiConnectApi';
 import { ExtensionOptions, TriggerKey } from '../base/extensionOptions';
 import * as Messages from '../base/communicationMessages';
+import { Subscription } from 'rxjs';
 
 enum OptionStatus {
     Loading,
@@ -24,11 +25,14 @@ export class OptionType {
 }
 
 export class OptionsComponent extends React.Component<any, OptionsComponentState> {
+    subscriptions: Subscription[];
+
     constructor(props: any) {
         super(props);
 
+        this.subscriptions = [];
+
         this.handleSubmit = this.handleSubmit.bind(this);
-        this.handleRuntimeMessage = this.handleRuntimeMessage.bind(this);
 
         this.state = {
             status: OptionStatus.Loading,
@@ -133,46 +137,40 @@ export class OptionsComponent extends React.Component<any, OptionsComponentState
         this.setState({
             status: OptionStatus.Saving
         })
-        const request: Messages.Action = {
-            type: "SaveExtensionOptionsRequest",
-            content: {
-                extensionOptionsToSave: this.state
-            }
-        }
-        chrome.runtime.sendMessage(request);
+        Messages.sendSaveExtensionOptionsRequest(this.state);
         event.preventDefault();
     }
 
     componentDidMount() {
-        chrome.runtime.onMessage.addListener(this.handleRuntimeMessage);
-        const request: Messages.Action = {
-            type: "GetExtensionOptionsRequest",
-        }
-        chrome.runtime.sendMessage(request);
+        this.subscriptions.push(
+            Messages.extensionOptionsResponseStream.subscribe(([extensionOptions]) => {
+                const newState = extensionOptions as OptionsComponentState;
+                newState.status = OptionStatus.Loaded;
+                this.setState(newState);
+            })
+        )
+        this.subscriptions.push(
+            Messages.saveExtensionOptionsResponseStream.subscribe(([res]) => {
+                this.setState({
+                    status: OptionStatus.Saved
+                });
+                setTimeout(() => {
+                    if (this.state.status == OptionStatus.Saved) {
+                        this.setState({
+                            status: OptionStatus.Loaded
+                        });
+                    }
+                }, 750);
+            })
+        )
+        Messages.sendExtensionOptionsRequest(null);
     }
 
     componentWillUnmount() {
-        chrome.runtime.onMessage.removeListener(this.handleRuntimeMessage);
-    }
-
-    handleRuntimeMessage(wrapper: Messages.Action, sender: chrome.runtime.MessageSender): void {
-        if (Messages.isGetExtensionOptionsResponse(wrapper)) {
-            const newState = wrapper.content.extensionOptions as OptionsComponentState;
-            newState.status = OptionStatus.Loaded;
-            this.setState(newState);
+        for (let sub of this.subscriptions) {
+            sub.unsubscribe();
         }
-        if (Messages.isSaveExtensionOptionsResponse(wrapper)) {
-            this.setState({
-                status: OptionStatus.Saved
-            });
-            setTimeout(() => {
-                if (this.state.status == OptionStatus.Saved) {
-                    this.setState({
-                        status: OptionStatus.Loaded
-                    });
-                }
-            }, 750);
-        }
+        this.subscriptions = [];
     }
 }
 

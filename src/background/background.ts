@@ -1,8 +1,10 @@
 import * as Messages from '../base/communicationMessages';
 import { AnkiConnectApi, DeckId } from '../base/ankiConnectApi';
 import { YandexDictionaryClient, YandexTranslateResponse } from './yandexDictionaryClient';
-import { TriggerKey } from '../base/extensionOptions';
-import { type } from 'os';
+import { TriggerKey, ExtensionOptions } from '../base/extensionOptions';
+import { Observable, defer } from 'rxjs';
+import { map } from 'rxjs/operators';
+import 'rxjs/add/observable/fromPromise';
 
 chrome.runtime.onInstalled.addListener(extensionInstalled);
 
@@ -25,10 +27,7 @@ function extensionInstalled(details: chrome.runtime.InstalledDetails): void {
 
 chrome.contextMenus.onClicked.addListener(function (info, tab) {
     if (info.menuItemId == "translate") {
-        const request : Messages.Action = {
-            type: "ShowBubbleRequest"
-        }
-        chrome.tabs.sendMessage(tab.id, request);
+        Messages.sendShowBubbleRequest("", { tabId: tab.id });
     }
 });
 
@@ -113,17 +112,10 @@ function generateTranslateResponse(sourceText: string, outsideTranslations: Mess
     return response;
 }
 
-function sendMessageResponse(action: Messages.Action, source: chrome.runtime.MessageSender): void {
-    if (source.tab) {
-        chrome.tabs.sendMessage(source.tab.id, action);
-    }
-    else {
-        chrome.runtime.sendMessage(action);
-    }
-}
+Messages.translateRequestStream.subscribe(([request, sender]) => handleTranslateRequest(request, sender))
 
-async function handleTranslateRequest(message: Messages.TranslateRequest): Promise<Messages.Action> {
-    const sourceText = message.sourceTextToTranslate;
+async function handleTranslateRequest(request: Messages.TranslateRequest, sender: chrome.runtime.MessageSender): Promise<void> {
+    const sourceText = request.sourceTextToTranslate;
 
     const vals = await Promise.all([getYandexTranslations(sourceText), getExistingTranslations(sourceText)]);
 
@@ -131,48 +123,41 @@ async function handleTranslateRequest(message: Messages.TranslateRequest): Promi
     const existingTranslations = vals[1];
 
     const translateResponse = generateTranslateResponse(sourceText, outsideTranslations, existingTranslations);
-    return {
-        type: "TranslateResponse",
-        content: translateResponse
-    }
-}
 
-async function handleGetExtensionOptionsRequest(): Promise<Messages.Action> {
+    await Messages.sendTranslateResponse(translateResponse, { tabId: sender.tab?.id });
+};
+
+Messages.extensionOptionsRequestStream.subscribe(([request, sender]) => handleGetExtensionOptionsRequest(sender));
+
+async function handleGetExtensionOptionsRequest(sender: chrome.runtime.MessageSender): Promise<void> {
     const settingsPromise = getSettingsFromStorage();
     const availableDecksPromise = ankiConnection.getAvailableDecks();
     const values = await Promise.all([settingsPromise, availableDecksPromise])
     const settings = values[0] as { [key: string]: any };
     const decks = values[1] as DeckId[];
 
-    const response: Messages.GetExtensionOptionsResponse = {
-        extensionOptions: {
-            availableDecks: decks,
-            yandexDictionaryApiKey: settings["yandexDictionaryApiKey"],
-            targetDeck: decks.find(d => d.id == settings["targetDeck"]?.id),
-            popupOnDoubleClick: settings["popupOnDoubleClick"] ?? false,
-            popupOnSelect: settings["popupOnSelect"] ?? false,
-            popupOnDoubleClickTriggerKey: settings["popupOnDoubleClickTriggerKey"] ?? TriggerKey.None,
-            popupOnSelectTriggerKey: settings["popupOnSelectTriggerKey"] ?? TriggerKey.None,
-        }
+    const response: ExtensionOptions = {
+        availableDecks: decks,
+        yandexDictionaryApiKey: settings["yandexDictionaryApiKey"],
+        targetDeck: decks.find(d => d.id == settings["targetDeck"]?.id),
+        popupOnDoubleClick: settings["popupOnDoubleClick"] ?? false,
+        popupOnSelect: settings["popupOnSelect"] ?? false,
+        popupOnDoubleClickTriggerKey: settings["popupOnDoubleClickTriggerKey"] ?? TriggerKey.None,
+        popupOnSelectTriggerKey: settings["popupOnSelectTriggerKey"] ?? TriggerKey.None,
     }
-    return {
-        type: "GetExtensionOptionsResponse",
-        content: response
-    };
+    Messages.sendExtensionOptionsResponse(response, { tabId: sender.tab?.id });
 }
 
-async function handleSaveExtensionOptionsRequest(message: Messages.SaveExtensionOptionsRequest): Promise<Messages.Action> {
-    await setSettingsInStorage(message.extensionOptionsToSave);
-    const response: Messages.SaveExtensionOptionsResponse = {
-        optionsSaved: true
-    }
-    return {
-        type: "SaveExtensionOptionsResponse",
-        content: response
-    };
+Messages.saveExtensionOptionsRequestStream.subscribe(([request, sender]) => handleSaveExtensionOptionsRequest(request, sender));
+
+async function handleSaveExtensionOptionsRequest(request: ExtensionOptions, sender: chrome.runtime.MessageSender): Promise<void> {
+    await setSettingsInStorage(request);
+    Messages.sendSaveExtensionOptionsResponse(true, { tabId: sender.tab?.id });
 }
 
-async function handleChangeWordTranslationStateRequest(message: Messages.ChangeWordTranslationStateRequest): Promise<Messages.Action> {
+Messages.changeTranslationStateRequestStream.subscribe(([request, sender]) => handleChangeWordTranslationStateRequest(request, sender));
+
+async function handleChangeWordTranslationStateRequest(message: Messages.ChangeWordTranslationStateRequest, sender: chrome.runtime.MessageSender): Promise<void> {
     const currentDeckPromise = getSelectedDeckName();
     const updateTranslations = currentDeckPromise
         .then(deckName => ankiConnection.setTranslationsOfWord(deckName, message.sourceTextToTranslate, message.newTranslations));
@@ -180,28 +165,5 @@ async function handleChangeWordTranslationStateRequest(message: Messages.ChangeW
     const vals = await Promise.all([updateTranslations, getYandexTranslations(message.sourceTextToTranslate)])
 
     const response = generateTranslateResponse(message.sourceTextToTranslate, vals[1], vals[0]);
-    return {
-        type: "TranslateResponse",
-        content: response
-    };
+    Messages.sendTranslateResponse(response, { tabId: sender.tab?.id });
 }
-
-chrome.runtime.onMessage.addListener((wrapper: Messages.Action, sender: chrome.runtime.MessageSender) => {
-    let response: Promise<Messages.Action> = null;
-    if (Messages.isTranslateRequest(wrapper)) {
-        response = handleTranslateRequest(wrapper.content);
-    }
-    if (Messages.isGetExtensionOptionsRequest(wrapper)) {
-        response = handleGetExtensionOptionsRequest();
-    }
-    if (Messages.isSaveExtensionOptionsRequest(wrapper)) {
-        response = handleSaveExtensionOptionsRequest(wrapper.content);
-    }
-    if (Messages.isChangeWordTranslationStateRequest(wrapper)) {
-        response = handleChangeWordTranslationStateRequest(wrapper.content);
-    }
-
-    if (response != null) {
-        response.then(res => sendMessageResponse(res, sender));
-    }
-});

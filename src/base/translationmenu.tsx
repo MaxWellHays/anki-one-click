@@ -2,6 +2,7 @@ import './translationmenu.scss';
 import React = require("react");
 import ReactDOM = require('react-dom');
 import * as Messages from "./communicationMessages";
+import { Subscription } from 'rxjs';
 
 export interface TranslationMenuSourceInfo {
     sourceText: string;
@@ -13,11 +14,12 @@ export interface TranslationMenuState {
 }
 
 export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, TranslationMenuState> {
+    subscribtions: Subscription[];
 
     constructor(props: TranslationMenuSourceInfo) {
         super(props);
-        this.handleChromeRuntimeMessage = this.handleChromeRuntimeMessage.bind(this);
         this.handleAddOrRemoveTranslation = this.handleAddOrRemoveTranslation.bind(this);
+        this.subscribtions = [];
         this.state = {
             translations: null,
             wordsInProcess: new Set<Messages.WordTranslation>(),
@@ -25,18 +27,23 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
     }
 
     componentDidMount() {
-        chrome.runtime.onMessage.addListener(this.handleChromeRuntimeMessage);
-        const request: Messages.Action = {
-            type: "TranslateRequest",
-            content: {
-                sourceTextToTranslate: this.props.sourceText
-            }
-        };
-        chrome.runtime.sendMessage(request);
+        this.subscribtions.push(
+            Messages.translateResponseStream.subscribe(([transpationResponse]) => {
+                if (transpationResponse.sourceTextToTranslate === this.props.sourceText) {
+                    this.setState({
+                        translations: transpationResponse.translations
+                    })
+                }
+            }));
+        Messages.sendTranslateRequest({
+            sourceTextToTranslate: this.props.sourceText
+        });
     }
 
     componentWillUnmount() {
-        chrome.runtime.onMessage.removeListener(this.handleChromeRuntimeMessage);
+        for (let sub of this.subscribtions) {
+            sub.unsubscribe();
+        }
     }
 
     render() {
@@ -58,29 +65,16 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
             </div>);
     }
 
-    handleChromeRuntimeMessage(request: Messages.Action) {
-        if (Messages.isTranslateResponse(request)) {
-            const translationReponse = request.content;
-            this.setState({
-                translations: translationReponse.translations,
-                wordsInProcess: new Set<Messages.WordTranslation>()
-            })
-        }
-    }
-
     handleAddOrRemoveTranslation(translation: Messages.WordTranslation, added: boolean): void {
         this.setState(oldState => {
             const newSet = new Set<Messages.WordTranslation>(oldState.wordsInProcess);
             newSet.add(translation);
             translation.isInDictionary = !translation.isInDictionary;
-            const changeTranslations: Messages.Action = {
-                type: "ChangeWordTranslationStateRequest",
-                content: {
-                    newTranslations: this.state.translations.filter(tr => tr.isInDictionary).map(tr => tr.translation),
-                    sourceTextToTranslate: this.props.sourceText
-                }
-            }
-            chrome.runtime.sendMessage(changeTranslations);
+
+            Messages.sendChangeTranslationStateRequest({
+                newTranslations: this.state.translations.filter(tr => tr.isInDictionary).map(tr => tr.translation),
+                sourceTextToTranslate: this.props.sourceText
+            })
 
             return {
                 wordsInProcess: newSet

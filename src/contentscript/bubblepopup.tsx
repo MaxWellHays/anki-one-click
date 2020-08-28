@@ -4,14 +4,8 @@ import ReactDOM = require('react-dom');
 import { TranslationMenu } from '../base/translationmenu';
 import * as Messages from '../base/communicationMessages';
 import { ExtensionOptions, TriggerKey } from '../base/extensionOptions';
-import { SelectionHelper } from './selectionhelper';
+import { SelectionHelper, SelectionInfo } from './selectionhelper';
 import { Subscription } from 'rxjs';
-
-export interface SelectionInfo {
-    text: string;
-    rect: DOMRect;
-    context: string;
-}
 
 export interface BubbleViewModel {
 }
@@ -107,18 +101,11 @@ export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
     }
 
     showBubble() : void {
-        const selection = window.getSelection();
-        const selectionText = selection.toString().trim();
-        if (selectionText.length > 0 && this.isSourceLanguageText(selectionText)) {
-            const rect = selection.getRangeAt(0).getBoundingClientRect();
-            const selectionInfo: SelectionInfo = {
-                rect: this.offset(rect, window.pageXOffset, window.pageYOffset),
-                text: selection.toString().trim(),
-                context: this.selectionHelper.extractContext(selection)
-            }
+        const selection = this.selectionHelper.getSelection();
+        if (selection) {
             this.setState({
                 visible: true,
-                currentSelection: selectionInfo,
+                currentSelection: selection,
             });
         }
     }
@@ -128,13 +115,5 @@ export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
             top: selectionRect.top,
             left: selectionRect.right
         };
-    }
-
-    offset(rect: DOMRect, xOffset: number, yOffset: number): DOMRect {
-        return new DOMRect(rect.x + xOffset, rect.y + yOffset, rect.width, rect.height);
-    }
-
-    isSourceLanguageText(text: string): boolean {
-        return (/^[a-zA-Z ]+$/.test(text));
     }
 }

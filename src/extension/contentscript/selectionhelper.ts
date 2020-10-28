@@ -3,9 +3,11 @@ interface SelectionEx extends Selection {
 }
 
 export interface SelectionInfo {
-    text: string;
+    selectionText: string;
+    contextText: string;
     rect: DOMRect;
-    context: string;
+    selectionOffsetInContext: number;
+    selectionLength: number;
 }
 
 export class SelectionHelper {
@@ -28,10 +30,13 @@ export class SelectionHelper {
             rect = this.getTextBoundingRect(inputElement, inputElement.selectionStart, inputElement.selectionEnd, false);
         }
 
+        const selectionContext = this.extractContext(selection);
         return {
-            context: this.extractContext(selection),
+            contextText: selectionContext[0],
             rect: this.offset(rect, window.pageXOffset, window.pageYOffset),
-            text: selectionText
+            selectionText: selectionText,
+            selectionLength: selectionText.length,
+            selectionOffsetInContext: selectionContext[1]
         }
     }
 
@@ -43,7 +48,7 @@ export class SelectionHelper {
         return (/^[a-zA-Z ]+$/.test(text));
     }
 
-    extractContext(selection: Selection): string {
+    extractContext(selection: Selection): [contextText: string, selectionOffset: number] {
         const selEx = selection as SelectionEx;
         const activeElement = document.activeElement;
 
@@ -73,7 +78,10 @@ export class SelectionHelper {
         selEx.modify("move", "left", "sentence");
         selEx.modify("extend", "right", "sentence");
 
-        const res = selEx.toString();
+        const contextText = selEx.toString();
+        const selectionStartPosition = toRestore.type == "simple"
+            ? toRestore.range.startOffset - selEx.getRangeAt(0).startOffset
+            : toRestore.selectionStart - (activeElement as HTMLInputElement).selectionStart;
 
         if (toRestore.type == "simple") {
             selEx.removeAllRanges();
@@ -84,7 +92,7 @@ export class SelectionHelper {
             inputElement.setSelectionRange(toRestore.selectionStart, toRestore.selectionEnd);
         }
 
-        return res;
+        return [contextText, selectionStartPosition];
     }
 
     isInputFieldElement(element: Element): boolean {

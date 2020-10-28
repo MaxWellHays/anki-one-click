@@ -36,9 +36,15 @@ export class BubblePopup extends React.Component<BubbleViewModel, BubbleState> {
 
     render() {
         if (this.state.visible && this.state.currentSelection) {
+            const currentSelection = this.state.currentSelection;
+            const contextText = currentSelection.contextText;
+            const selectionText = currentSelection.selectionText;
+            const selectionLength = currentSelection.selectionLength;
+            const selectionOffset = currentSelection.selectionOffsetInContext;
+
             return (<div className="selection_bubble"
                 style={this.createBubbleProperties(this.state.currentSelection.rect)}>
-                <TranslationMenu sourceText={this.state.currentSelection.text} />
+                <TranslationMenu contextText={contextText} selectionText={selectionText} selectionLength={selectionLength} selectionStart={selectionOffset} />
             </div>);
         }
         return null;

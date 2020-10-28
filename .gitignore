@@ -93,3 +93,6 @@ node_modules/
 
 # API keys
 .env
+
+# Pycache
+__pycache__

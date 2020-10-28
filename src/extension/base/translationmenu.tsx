@@ -5,7 +5,10 @@ import * as Messages from "./communicationMessages";
 import { Subscription } from 'rxjs';
 
 export interface TranslationMenuSourceInfo {
-    sourceText: string;
+    contextText: string;
+    selectionText: string;
+    selectionStart: number;
+    selectionLength: number;
 }
 
 export interface TranslationMenuState {
@@ -29,14 +32,16 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
     componentDidMount() {
         this.subscribtions.push(
             Messages.translateResponseStream.subscribe(([transpationResponse]) => {
-                if (transpationResponse.sourceTextToTranslate === this.props.sourceText) {
+                if (transpationResponse.sourceTextToTranslate === this.props.selectionText) {
                     this.setState({
                         translations: transpationResponse.translations
                     })
                 }
             }));
         Messages.sendTranslateRequest({
-            sourceTextToTranslate: this.props.sourceText
+            contextSentence: this.props.contextText,
+            selectionLength: this.props.selectionLength,
+            selectionStart: this.props.selectionStart,
         });
     }
 
@@ -59,7 +64,7 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
         return (
             <div>
                 <div className="anki-one-click-source-word">
-                    {this.props.sourceText}
+                    {this.props.selectionText}
                 </div>
                 {translations}
             </div>);
@@ -73,8 +78,8 @@ export class TranslationMenu extends React.Component<TranslationMenuSourceInfo, 
 
             Messages.sendChangeTranslationStateRequest({
                 newTranslations: this.state.translations.filter(tr => tr.isInDictionary).map(tr => tr.translation),
-                sourceTextToTranslate: this.props.sourceText
-            })
+                sourceTextToTranslate: this.props.selectionText
+            });
 
             return {
                 wordsInProcess: newSet

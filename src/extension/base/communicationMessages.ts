@@ -2,7 +2,9 @@ import { ExtensionOptions } from "./extensionOptions";
 import { getMessage } from '@extend-chrome/messages'
 
 export interface TranslateRequest {
-    sourceTextToTranslate: string;
+    contextSentence: string;
+    selectionStart: number;
+    selectionLength: number;
 }
 
 export interface TranslateResponse {

@@ -115,14 +115,15 @@ function generateTranslateResponse(sourceText: string, outsideTranslations: Mess
 Messages.translateRequestStream.subscribe(([request, sender]) => handleTranslateRequest(request, sender))
 
 async function handleTranslateRequest(request: Messages.TranslateRequest, sender: chrome.runtime.MessageSender): Promise<void> {
-    const sourceText = request.sourceTextToTranslate;
+    const contextText = request.contextSentence;
+    const selectionText = contextText.substr(request.selectionStart, request.selectionLength);
 
-    const vals = await Promise.all([getYandexTranslations(sourceText), getExistingTranslations(sourceText)]);
+    const vals = await Promise.all([getYandexTranslations(selectionText), getExistingTranslations(selectionText)]);
 
     const outsideTranslations = vals[0];
     const existingTranslations = vals[1];
 
-    const translateResponse = generateTranslateResponse(sourceText, outsideTranslations, existingTranslations);
+    const translateResponse = generateTranslateResponse(selectionText, outsideTranslations, existingTranslations);
 
     await Messages.sendTranslateResponse(translateResponse, { tabId: sender.tab?.id });
 };

@@ -42,7 +42,7 @@ function getYandexDictionaryApiKey(): Promise<string> {
 }
 
 function getSelectedDeckName(): Promise<string> {
-    return getSettingsFromStorage().then(settings => settings["targetDeck"].name);
+    return getSettingsFromStorage().then(settings => settings["targetDeck"]?.name);
 }
 
 function setSettingsInStorage(settings: any): Promise<void> {

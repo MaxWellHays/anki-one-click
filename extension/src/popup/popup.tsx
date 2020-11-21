@@ -28,7 +28,7 @@ export class PopupComponent extends React.Component<any, PopupState> {
     render() {
         let translationMenu = null;
         if (this.state.requestedText) {
-            translationMenu = <TranslationMenu sourceText={this.state.requestedText} />;
+            translationMenu = <TranslationMenu selectionText={this.state.requestedText} contextText={this.state.enteredText} selectionLength={this.state.enteredText.length} selectionStart={0} />;
         }
         return (<div>
             <input type="text"
